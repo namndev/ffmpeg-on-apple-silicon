@@ -1,10 +1,10 @@
 #!/bin/bash
 set -exuo pipefail
 
-WORKDIR="$(pwd)/workdir"
+WORKDIR="$(pwd)/ffmpeg"
 mkdir -p ${WORKDIR}
 
-SRC="$WORKDIR/sw"
+SRC="$WORKDIR"
 CMPLD="$WORKDIR/compile"
 NUM_PARALLEL_BUILDS=$(sysctl -n hw.ncpu)
 
@@ -69,6 +69,7 @@ git clone --depth 1 -b origin https://github.com/rbrito/lame.git $CMPLD/lame &
 git clone --depth 1 -b main https://github.com/webmproject/libvpx $CMPLD/libvpx &
 git clone --depth 1 -b master https://github.com/FFmpeg/FFmpeg $CMPLD/ffmpeg &
 git clone --depth 1 -b v2.0.1 https://aomedia.googlesource.com/aom.git $CMPLD/aom &
+git clone https://github.com/mstorsjo/fdk-aac.git $CMPLD/fdk-aac &
 wait
 
 curl -Ls -o - https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.3.tar.gz | tar zxf - -C $CMPLD/ &
@@ -269,6 +270,18 @@ function build_vpx () {
   fi
 }
 
+function build_libfdk_aac () {
+  if [[ ! -e "${SRC}/lib/pkgconfig/fdk-aac.pc" ]]; then
+    echo '♻️ ' Start compiling fdk-aac
+    cd ${CMPLD}
+    cd fdk-aac
+    autoreconf -fiv
+    ./configure --prefix=${SRC} --disable-shared
+    make -j ${NUM_PARALLEL_BUILDS}
+    make install
+  fi
+}
+
 function build_expat () {
   if [[ ! -e "${SRC}/lib/pkgconfig/expat.pc" ]]; then
     echo '♻️ ' Start compiling EXPAT
@@ -440,7 +453,7 @@ function build_ffmpeg () {
   ./configure --prefix=${SRC} --extra-cflags="-fno-stack-check" --arch=${ARCH} --cc=/usr/bin/clang \
               --enable-fontconfig --enable-gpl --enable-libopus --enable-libtheora --enable-libvorbis \
               --enable-libmp3lame --enable-libass --enable-libfreetype --enable-libx264 --enable-libx265 --enable-libvpx \
-              --enable-libaom --enable-libvidstab --enable-libsnappy --enable-version3 --pkg-config-flags=--static \
+              --enable-libfdk-aac --enable-libaom --enable-libvidstab --enable-libsnappy --enable-version3 --pkg-config-flags=--static \
               --disable-ffplay --enable-postproc --enable-nonfree --enable-runtime-cpudetect
   echo "build start"
   start_time="$(date -u +%s)"
@@ -462,6 +475,7 @@ build_lame
 build_x264
 build_x265
 build_vpx
+build_libfdk_aac
 build_expat
 build_libiconv
 build_enca
