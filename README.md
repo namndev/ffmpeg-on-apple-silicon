@@ -33,3 +33,9 @@ Before you start you must install arm64-based Homebrew to `/opt/homebrew`.
 
 1. Clone this repository.
 2. Run `./build.bash`.
+
+## Convert AAC
+
+```bash
+find . -name '*.flac' -exec sh -c 'ffmpeg -i "$1" -map a:0 -c:a libfdk_aac -b:a 768k "${1%.flac}.m4a"' _ {} \;
+```
